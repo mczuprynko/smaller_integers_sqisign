@@ -1,6 +1,8 @@
 #include <quaternion.h>
 #include <internal.h>
 #include "lll_internals.h"
+#include "bench.h"
+uint64_t lll_count;
 
 void
 quat_lideal_reduce_basis(ibz_mat_4x4_t *reduced,
@@ -8,6 +10,7 @@ quat_lideal_reduce_basis(ibz_mat_4x4_t *reduced,
                          const quat_left_ideal_t *lideal,
                          const quat_alg_t *alg)
 {
+    lll_count += 1;
     assert(quat_order_is_maximal((lideal->parent_order), alg));
     ibz_t gram_corrector;
     ibz_init(&gram_corrector);
@@ -26,21 +29,59 @@ quat_lideal_reduce_basis(ibz_mat_4x4_t *reduced,
 }
 
 void
+cbz_lideal_reduce_basis(ibz_mat_4x4_t *reduced,
+                         ibz_mat_4x4_t *gram,
+                         const quat_left_ideal_t *lideal,
+                         const quat_alg_t *alg)
+{
+    assert(quat_order_is_maximal((lideal->parent_order), alg));
+    ibz_t gram_corrector;
+    cbz_mat_2x2_t uv, tmp, inter_gram;
+    cbz_mat_2x2_init(&uv); cbz_mat_2x2_init(&tmp); cbz_mat_2x2_init(&inter_gram);
+    ibz_init(&gram_corrector);
+    ibz_mul(&gram_corrector, &(lideal->lattice.denom), &(lideal->lattice.denom));
+    cbz_lideal_class_gram(&uv, &inter_gram, lideal, alg);
+    cbz_lagrange_2x2(&tmp, &uv, &inter_gram);
+    ibz_lat_from_cbz_mat_2x2(reduced, &uv);
+    ibz_lat_from_cbz_mat_2x2(gram, &inter_gram);
+
+    ibz_mat_4x4_scalar_mul(gram, &gram_corrector, gram);
+    for (int i = 0; i < 4; i++) {
+
+        ibz_div_2exp(&((*gram)[i][i]), &((*gram)[i][i]), 1);
+        for (int j = i + 1; j < 4; j++) {
+            ibz_set(&((*gram)[i][j]), 0);
+        }
+    }
+    ibz_finalize(&gram_corrector);
+    cbz_mat_2x2_finalize(&uv); cbz_mat_2x2_finalize(&tmp); cbz_mat_2x2_finalize(&inter_gram);
+}
+
+void
 quat_lideal_lideal_mul_reduced(quat_left_ideal_t *prod,
                                ibz_mat_4x4_t *gram,
                                const quat_left_ideal_t *lideal1,
                                const quat_left_ideal_t *lideal2,
                                const quat_alg_t *alg)
 {
-    ibz_mat_4x4_t red;
-    ibz_mat_4x4_init(&red);
 
-    quat_lattice_mul(&(prod->lattice), &(lideal1->lattice), &(lideal2->lattice), alg);
+    ibz_t mod;
+    ibz_mat_4x4_t red;
+    ibz_init(&mod);
+    ibz_mat_4x4_init(&red);
+    assert(quat_lideal_norm_verify(lideal1));
+    assert(quat_lideal_norm_verify(lideal2));
+
+    //quat_lattice_mul(&(prod->lattice), &(lideal1->lattice), &(lideal2->lattice), alg);
+
+    ibz_mul(&mod, &lideal1->norm, &lideal2->norm);
+    quat_lattice_mul_given_mod(&(prod->lattice), &(lideal1->lattice), &(lideal2->lattice), &mod, alg);
     prod->parent_order = lideal1->parent_order;
     quat_lideal_norm(prod);
     quat_lideal_reduce_basis(&red, gram, prod, alg);
     ibz_mat_4x4_copy(&(prod->lattice.basis), &red);
 
+    ibz_finalize(&mod);
     ibz_mat_4x4_finalize(&red);
 }
 
@@ -57,7 +98,8 @@ quat_lideal_prime_norm_reduced_equivalent(quat_left_ideal_t *lideal,
     int found = 0;
 
     // computing the reduced basis
-    quat_lideal_reduce_basis(&red, &gram, lideal, alg);
+    cbz_lideal_reduce_basis(&red, &gram, lideal, alg);
+    // quat_lideal_reduce_basis(&red, &gram, lideal, alg);
 
     quat_alg_elem_t new_alpha;
     quat_alg_elem_init(&new_alpha);
@@ -98,7 +140,6 @@ quat_lideal_prime_norm_reduced_equivalent(quat_left_ideal_t *lideal,
 
         // pseudo-primality test
         if (ibz_probab_prime(&tmp, primality_num_iter)) {
-
             // computes the generator using a matrix multiplication
             ibz_mat_4x4_eval(&new_alpha.coord, &red, &new_alpha.coord);
             ibz_copy(&new_alpha.denom, &lideal->lattice.denom);
@@ -106,7 +147,8 @@ quat_lideal_prime_norm_reduced_equivalent(quat_left_ideal_t *lideal,
 
             quat_alg_conj(&new_alpha, &new_alpha);
             ibz_mul(&new_alpha.denom, &new_alpha.denom, &lideal->norm);
-            quat_lideal_mul(lideal, lideal, &new_alpha, alg);
+            //quat_lideal_mul(lideal, lideal, &new_alpha, alg);
+            quat_O0_lideal_mul(lideal, lideal, &new_alpha, alg);
             assert(ibz_probab_prime(&lideal->norm, primality_num_iter));
 
             found = 1;

@@ -533,6 +533,17 @@ void quat_lattice_mul(quat_lattice_t *res,
                       const quat_lattice_t *lat2,
                       const quat_alg_t *alg); // ideal, lattie, test/ideal, test/lattice
 
+void quat_lattice_mul_given_mod(quat_lattice_t *res, 
+                                const quat_lattice_t *lat1, 
+                                const quat_lattice_t *lat2, 
+                                const ibz_t *mod, 
+                                const quat_alg_t *alg);
+
+void quat_O0_lideal_mul(quat_left_ideal_t *product,
+                const quat_left_ideal_t *lideal,
+                const quat_alg_elem_t *alpha,
+                const quat_alg_t *alg);
+
 /**
  * @brief Computes the dual lattice of lat, without putting its basis in HNF
  *
@@ -717,16 +728,6 @@ void quat_lideal_right_transporter(quat_lattice_t *trans,
                                    const quat_left_ideal_t *lideal1,
                                    const quat_left_ideal_t *lideal2,
                                    const quat_alg_t *alg);
-
-/**
- * @brief  Right order of a left ideal
- *
- * @param order Output: right order of the given ideal
- * @param lideal left ideal
- * @param alg the quaternion algebra
- */
-void quat_lideal_right_order(quat_lattice_t *order, const quat_left_ideal_t *lideal,
-                             const quat_alg_t *alg); // ideal
 
 /**
  * @brief  Gram matrix of the trace map of the ideal class

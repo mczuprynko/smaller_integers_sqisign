@@ -4,6 +4,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <inttypes.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 
 #include <api.h>
 #include <rng.h>
@@ -12,6 +15,100 @@
 #if defined(TARGET_BIG_ENDIAN)
 #include <tutil.h>
 #endif
+
+
+
+uint64_t cyc_data[NUM_MEASURMENTS];
+char* frame_array[MAX_SAMPLES][MAX_FRAMES];
+unsigned bit_samples_array[MAX_BIT_SAMPLES];
+int FileDesc;
+
+const int groupings[NUM_MEASURMENTS] = {
+    0,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    1,
+    0,
+    0
+};
+
+const char *NamesMeasures[NUM_MEASURMENTS] = { 
+    "Commit",
+    "RndIdealGivNorm",
+    "RndEquivPrimeIdeal",
+    "IdealToIso",
+    "SuitableIdeals",
+    "FixedDegIso",
+    "Iso22Chain",
+    "Hash_Chall",
+    "Chall_to_quat",
+    "Rand_aux_Iso",
+    "Odd_iso",
+    "RndIdealGivNorm",
+    "IdealIntersection",
+    "IdealToIso",
+    "SuitableIdeals",
+    "FixedDegIso",
+    "Iso22Chain",
+    "SplitAuxIso",
+    "even_iso",
+    "end_sig"
+};
+
+void open_file_desc(const char *filename) {
+    FileDesc = open(filename, O_WRONLY);
+    printf("%i\n", FileDesc);
+}
+
+void close_file_desc() {
+    close(FileDesc);
+}
+
+void write_backtrace_to_file(const char *filename, char *symbols[MAX_SAMPLES][MAX_FRAMES]) {
+    FILE *file = fopen(filename, "w");
+    if (file == NULL) {
+        perror("fopen");
+        return;
+    }
+
+    for (int i = 0; i < MAX_SAMPLES; i++) {
+        int j = 0;
+        while (symbols[i][j] != 0) {
+            fprintf(file, "%s, ", symbols[i][j++]);
+        }
+        fprintf(file, "\n");
+    }
+
+    fclose(file);
+}
+
+void write_bitsizes_to_file(const char *filename, unsigned symbols[MAX_BIT_SAMPLES]) {
+    FILE *file = fopen(filename, "w");
+    if (file == NULL) {
+        perror("fopen");
+        return;
+    }
+
+    for (int i = 0; i < MAX_BIT_SAMPLES; i++) {
+        fprintf(file, "%u, ", symbols[i]);
+    }
+
+    fclose(file);
+}
 
 void
 bench(size_t runs)
@@ -25,6 +122,11 @@ bench(size_t runs)
     unsigned char *mbuf = calloc(runs, m_len);
 
     unsigned char *pk[runs], *sk[runs], *sm[runs], *m[runs];
+
+    for (int i = 0; i < MAX_SAMPLES; i++){
+        frame_array[i][0] = 0;
+    }
+
     for (size_t i = 0; i < runs; ++i) {
         pk[i] = pkbuf + i * CRYPTO_PUBLICKEYBYTES;
         sk[i] = skbuf + i * CRYPTO_SECRETKEYBYTES;
@@ -33,22 +135,40 @@ bench(size_t runs)
         if (randombytes(m[i], m_len))
             abort();
     }
+    
+    uint64_t all_cyc_data[NUM_MEASURMENTS][runs];
 
     unsigned long long len;
 
     printf("%s (%zu iterations)\n", CRYPTO_ALGNAME, runs);
+#ifdef RECORD_CALLSTACK
+    open_file_desc("/backtrace.txt");
+#endif
 
     BENCH_CODE_1(runs);
     crypto_sign_keypair(pk[i], sk[i]);
     BENCH_CODE_2("keypair");
 
+    lll_count = 0;
     BENCH_CODE_1(runs);
     len = sm_len;
+    memset(cyc_data, 0, sizeof(cyc_data));
     crypto_sign(sm[i], &len, m[i], m_len, sk[i]);
     if (len != sm_len)
         abort();
+    for (int j = 0; j < NUM_MEASURMENTS; ++j){
+        all_cyc_data[j][i] = cyc_data[j];
+    }
     BENCH_CODE_2("sign");
-
+    PRINT_STATS(runs, all_cyc_data);
+    printf("Avg LLL count call %lu, total %lu\n", lll_count/runs, lll_count);
+    printf("Max int size %llu\n", MAX_bit);
+    printf("Count calls %llu\n", count_calls);
+    //write_backtrace_to_file("backtrace.txt", frame_array);
+#ifdef RECORD_CALLSTACK
+    close_file_desc();
+    write_bitsizes_to_file("Bit_samples.txt", bit_samples_array);
+#endif
     int ret;
     BENCH_CODE_1(runs);
     len = m_len;

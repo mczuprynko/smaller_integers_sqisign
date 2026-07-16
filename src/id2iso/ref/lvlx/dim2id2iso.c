@@ -7,6 +7,7 @@
 #include <quaternion.h>
 #include <tools.h>
 #include <torsion_constants.h>
+#include <bench.h>
 
 static int
 _fixed_degree_isogeny_impl(quat_left_ideal_t *lideal,
@@ -95,7 +96,7 @@ _fixed_degree_isogeny_impl(quat_left_ideal_t *lideal,
                length);
         goto cleanup;
     }
-    quat_lideal_create(lideal, &theta, u, &order_hnf.order, &QUATALG_PINFTY);
+    //quat_lideal_create(lideal, &theta, u, &order_hnf.order, &QUATALG_PINFTY); not needed
 
     quat_alg_elem_finalize(&order_hnf.z);
     quat_alg_elem_finalize(&order_hnf.t);
@@ -541,10 +542,12 @@ find_uv(ibz_t *u,
     // reduced_id = ideal[0] * \overline{delta}/n(ideal[0])
     quat_alg_conj(&delta, &delta);
     ibz_mul(&delta.denom, &delta.denom, &ideal[0].norm);
-    quat_lattice_alg_elem_mul(&reduced_id.lattice, &reduced_id.lattice, &delta, Bpoo);
+    //quat_lattice_alg_elem_mul(&reduced_id.lattice, &reduced_id.lattice, &delta, Bpoo);
     ibz_copy(&reduced_id.norm, &gram[0][0][0]);
     ibz_div(&reduced_id.norm, &remain, &reduced_id.norm, &adjusted_norm[0]);
     assert(ibz_cmp(&remain, &ibz_const_zero) == 0);
+    
+    quat_lattice_alg_elem_mul_given_mod(&reduced_id.lattice, &reduced_id.lattice, &delta, &reduced_id.norm, Bpoo);
 
     // and conj_ideal is the conjugate of reduced_id
     // init the right order;
@@ -553,8 +556,17 @@ find_uv(ibz_t *u,
     // computing the conjugate
     quat_left_ideal_t conj_ideal;
     quat_left_ideal_init(&conj_ideal);
-    quat_lideal_conjugate_without_hnf(&conj_ideal, &right_order, &reduced_id, Bpoo);
-
+#ifndef NDEBUG
+    //quat_lideal_conjugate_without_hnf(&conj_ideal, &right_order, &reduced_id, Bpoo);
+    quat_lideal_right_order(&right_order, &reduced_id, Bpoo);
+    conj_ideal.parent_order = &right_order;
+    // we do not update the left order since it is not needed 
+#else 
+    conj_ideal.parent_order = reduced_id.parent_order;
+#endif
+    quat_lattice_conjugate_without_hnf(&conj_ideal.lattice, &reduced_id.lattice);
+    ibz_copy(&conj_ideal.norm, &reduced_id.norm);
+    
     // computing all the other connecting ideals and reducing them
     for (int i = 1; i < num_alternate_order + 1; i++) {
         quat_lideal_lideal_mul_reduced(&ideal[i], &gram[i], &conj_ideal, &ALTERNATE_CONNECTING_IDEALS[i - 1], Bpoo);
@@ -792,6 +804,9 @@ dim2id2iso_ideal_to_isogeny_clapotis(quat_alg_elem_t *beta1,
 #ifndef NDEBUG
     unsigned int Fu_length, Fv_length;
 #endif
+
+    BEG_MES()
+
     ret = find_uv(u,
                   v,
                   beta1,
@@ -804,6 +819,11 @@ dim2id2iso_ideal_to_isogeny_clapotis(quat_alg_elem_t *beta1,
                   lideal,
                   Bpoo,
                   NUM_ALTERNATE_EXTREMAL_ORDERS);
+    
+    END_MES_CHOICE(COMMIT_ITI_SuitableIdeals, ODD_ITI_SuitableIdeals);
+
+    //printf("%i, %i\n", index_order1, index_order2);
+
     if (!ret) {
         goto cleanup;
     }
@@ -886,9 +906,10 @@ dim2id2iso_ideal_to_isogeny_clapotis(quat_alg_elem_t *beta1,
     pushed_points[1] = Q;
     pushed_points[2] = PmQ;
     // we perform the computation of phiu with a fixed degree isogeny
+    BEG_MES()
     ret = fixed_degree_isogeny_and_eval(
         &idealu, u, true, &Fu_codomain, pushed_points, sizeof(pushed_points) / sizeof(*pushed_points), index_order1);
-
+    END_MES_CHOICE(COMMIT_ITI_FixedDegIso, ODD_ITI_FixedDegIso)
     if (!ret) {
         goto cleanup;
     }
@@ -940,8 +961,10 @@ dim2id2iso_ideal_to_isogeny_clapotis(quat_alg_elem_t *beta1,
     pushed_points[2] = PmQ;
 
     // computation of phiv
+    BEG_MES()
     ret = fixed_degree_isogeny_and_eval(
         &idealv, v, true, &Fv_codomain, pushed_points, sizeof(pushed_points) / sizeof(*pushed_points), index_order2);
+    END_MES_CHOICE(COMMIT_ITI_FixedDegIso, ODD_ITI_FixedDegIso)
     if (!ret) {
         goto cleanup;
     }
@@ -1032,8 +1055,10 @@ dim2id2iso_ideal_to_isogeny_clapotis(quat_alg_elem_t *beta1,
 
     theta_couple_curve_t theta_codomain;
 
+    BEG_MES()
     ret = theta_chain_compute_and_eval_randomized(
         exp, &E01, &ker, false, &theta_codomain, pushed_points, sizeof(pushed_points) / sizeof(*pushed_points));
+    END_MES_CHOICE(COMMIT_ITI_Iso22Chain, ODD_ITI_Iso22Chain)
     if (!ret) {
         goto cleanup;
     }
@@ -1159,6 +1184,11 @@ dim2id2iso_arbitrary_isogeny_evaluation(ec_basis_t *basis, ec_curve_t *codomain,
 
     ret = dim2id2iso_ideal_to_isogeny_clapotis(
         &beta1, &beta2, &u, &v, &d1, &d2, codomain, basis, lideal, &QUATALG_PINFTY);
+
+    //gmp_printf("u = %Zd \n", &u);
+    //gmp_printf("v = %Zd \n", &v);
+    //gmp_printf("d1 = %Zd \n", &d1);
+    //gmp_printf("d2 = %Zd \n", &d2);
 
     quat_alg_elem_finalize(&beta1);
     quat_alg_elem_finalize(&beta2);

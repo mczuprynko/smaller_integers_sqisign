@@ -443,6 +443,17 @@ int quat_lattice_contains(ibz_vec_4_t *coord, const quat_lattice_t *lat, const q
  */
 void quat_lattice_conjugate_without_hnf(quat_lattice_t *conj, const quat_lattice_t *lat);
 
+
+/**
+ * @brief  Right order of a left ideal
+ *
+ * @param order Output: right order of the given ideal
+ * @param lideal left ideal
+ * @param alg the quaternion algebra
+ */
+void quat_lideal_right_order(quat_lattice_t *order, const quat_left_ideal_t *lideal,
+                             const quat_alg_t *alg); // ideal
+
 /**
  * @brief Multiply a lattice and an algebra element
  *
@@ -555,6 +566,8 @@ void quat_lideal_conjugate_without_hnf(quat_left_ideal_t *conj,
                                        quat_lattice_t *new_parent_order,
                                        const quat_left_ideal_t *lideal,
                                        const quat_alg_t *alg);
+
+int quat_lideal_norm_verify(const quat_left_ideal_t *lideal);
 
 /**
  * @brief  Intersection of two left ideals
@@ -704,5 +717,114 @@ int quat_sampling_random_ideal_O0_given_norm(quat_left_ideal_t *lideal,
 // end quat_quat
 /** @}
  */
+
+typedef ibz_vec_2_t cbz_t;
+typedef cbz_t cbz_mat_2x2_t[2][2];
+typedef cbz_t cbz_vec_2_t[2];
+
+void cbz_mat_2x2_from_hnf_ibz_lat(cbz_mat_2x2_t *uv, const ibz_mat_4x4_t *mat);
+
+void ibz_lat_from_cbz_mat_2x2(ibz_mat_4x4_t *mat, const cbz_mat_2x2_t *uv);
+
+void cbz_vec_2_conjugate(cbz_vec_2_t *r, const cbz_vec_2_t *a);
+
+void cbz_copy_quat(cbz_vec_2_t *res, const ibz_vec_4_t *x);
+
+void cbz_set_quat(ibz_vec_4_t *res, const cbz_vec_2_t *x) ;
+
+void cbz_init(cbz_t *x);
+
+void cbz_vec_2_init(cbz_vec_2_t *x);
+
+void cbz_mat_2x2_init(cbz_mat_2x2_t *x);
+
+void cbz_finalize(cbz_t *x);
+
+void cbz_vec_2_finalize(cbz_vec_2_t *x);
+
+void cbz_mat_2x2_finalize(cbz_mat_2x2_t *x);
+
+void cbz_lagrange_2x2(cbz_mat_2x2_t *uni_mat, cbz_mat_2x2_t *uv, cbz_mat_2x2_t *gram);
+
+void cbz_gram_2x2(cbz_mat_2x2_t *gram, cbz_mat_2x2_t *uv, const quat_alg_t *alg);
+
+void cbz_lideal_class_gram(cbz_mat_2x2_t *uv, cbz_mat_2x2_t *G, const quat_left_ideal_t *lideal, const quat_alg_t *alg);
+
+void cbz_O0_lideal_create(quat_left_ideal_t *lideal,
+                   const quat_alg_elem_t *x,
+                   const ibz_t *N,
+                   const quat_lattice_t *order,
+                   const quat_alg_t *alg);
+
+void cbz_vec_2_copy(cbz_vec_2_t *r, const cbz_vec_2_t *a);
+
+void cbz_printf(const cbz_t *x);
+
+void cbz_vec_2_printf(const cbz_vec_2_t *x);
+
+void ibz_mat_4xn_hnf_simple_mod_core(ibz_mat_4x4_t *hnf, int generator_number, const ibz_vec_4_t *generators, const ibz_t *mod);
+
+void cbz_mat_2x2_inv_given_denom(cbz_mat_2x2_t *inv, const ibz_t *denom, const cbz_mat_2x2_t *mat);
+
+
+void cbz_hnf_mod(cbz_mat_2x2_t *hnf, int generator_number, const cbz_vec_2_t *generators, const ibz_t *mod, const quat_alg_t *alg);
+
+void cbz_mat_2x2_scalar_mul(cbz_mat_2x2_t *res, const ibz_t *scalar, const cbz_mat_2x2_t *in_mat);
+
+void quat_O0_lideals_inter(quat_left_ideal_t *inter,
+                  const quat_left_ideal_t *I1,
+                  const quat_left_ideal_t *I2,
+                  const quat_alg_t *alg);
+
+void cbz_mat_2x2_transpose(cbz_mat_2x2_t *t_mat, const cbz_mat_2x2_t *mat);
+
+void cbz_mat_2x2_swap_columns(cbz_mat_2x2_t *t_mat, const cbz_mat_2x2_t *mat);
+
+void cbz_mat_2x2_conj_transpose(cbz_mat_2x2_t *t_mat, const cbz_mat_2x2_t *mat);
+
+void cbz_vec_2_swap(cbz_vec_2_t *a, cbz_vec_2_t *b);
+
+void
+quat_lattice_add_given_norm(quat_lattice_t *res, const quat_lattice_t *lat1, const quat_lattice_t *lat2, const ibz_t *norm);
+
+void
+ibz_mat_4x4_inv_given_denom(ibz_mat_4x4_t *inv, const ibz_t *denom, const ibz_mat_4x4_t *mat);
+
+void
+quat_O0_lideal_conj_O0_lideal_inter(quat_lattice_t *inter,
+                  quat_lattice_t *dualG,
+                  const quat_left_ideal_t *I1,
+                  const quat_left_ideal_t *I2,
+                  const quat_alg_t *alg);
+
+
+void
+quat_O0_lattice_alg_elem_mul_given_norm(quat_lattice_t *prod,
+                          const quat_lattice_t *lat,
+                          const quat_alg_elem_t *elem,
+                          const ibz_t *norm,
+                          const quat_alg_t *alg);
+
+int
+quat_lattice_bound_parallelogram_given_dualG(ibz_vec_4_t *box, ibz_mat_4x4_t *U, quat_lattice_t *dualG, const ibz_t *radius);
+
+
+int
+quat_lattice_sample_from_ball_given_dualG(quat_alg_elem_t *res,
+                              quat_lattice_t *dualG,
+                              const quat_lattice_t *lattice,
+                              const quat_alg_t *alg,
+                              const ibz_t *radius);
+
+
+void
+quat_dual_lattice_gram(quat_lattice_t *dual_G, const quat_lattice_t *dual_lattice, const quat_alg_t *alg);
+
+void
+quat_lattice_alg_elem_mul_given_mod(quat_lattice_t *prod,
+                          const quat_lattice_t *lat,
+                          const quat_alg_elem_t *elem,
+                          const ibz_t *mod,
+                          const quat_alg_t *alg);
 
 #endif

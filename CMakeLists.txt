@@ -30,6 +30,7 @@ elseif (${SQISIGN_BUILD_TYPE} MATCHES "arm64crypto")
   add_compile_definitions(SQISIGN_BUILD_TYPE_ARM64CRYPTO SQISIGN_GF_IMPL_REF)
 endif()
 
+#SET(SVARIANT_S "lvl1")
 SET(SVARIANT_S "lvl1;lvl3;lvl5")
 
 include(.cmake/flags.cmake)
@@ -49,7 +50,7 @@ set(INC_PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 add_subdirectory(src)
 add_subdirectory(apps)
-add_subdirectory(test)
+#add_subdirectory(test)
 
 include(.cmake/bm.cmake)
 

@@ -191,7 +191,8 @@ secret_key_from_bytes(secret_key_t *sk, public_key_t *pk, const byte_t *enc)
         enc = ibz_from_bytes(&gen.coord[1], enc, FP_ENCODED_BYTES, true);
         enc = ibz_from_bytes(&gen.coord[2], enc, FP_ENCODED_BYTES, true);
         enc = ibz_from_bytes(&gen.coord[3], enc, FP_ENCODED_BYTES, true);
-        quat_lideal_create(&sk->secret_ideal, &gen, &norm, &MAXORD_O0, &QUATALG_PINFTY);
+        //quat_lideal_create(&sk->secret_ideal, &gen, &norm, &MAXORD_O0, &QUATALG_PINFTY);
+        cbz_O0_lideal_create(&sk->secret_ideal, &gen, &norm, &MAXORD_O0, &QUATALG_PINFTY);
         ibz_finalize(&norm);
         quat_alg_elem_finalize(&gen);
     }

@@ -1,5 +1,7 @@
 #include "hnf_internal.h"
 #include "internal.h"
+#include <stdio.h>
+#include "bench.h"
 
 // HNF test function
 int
@@ -134,6 +136,7 @@ ibz_mat_4xn_hnf_mod_core(ibz_mat_4x4_t *hnf, int generator_number, const ibz_vec
     ibz_init(&coeff_1);
     ibz_init(&coeff_2);
     ibz_vec_4_init(&c);
+    PRINT_BACKTRACE_SYMBOLS(0LU);
     for (int h = 0; h < n; h++) {
         if (h < 4)
             ibz_vec_4_init(&(w[h]));
@@ -206,5 +209,69 @@ ibz_mat_4xn_hnf_mod_core(ibz_mat_4x4_t *hnf, int generator_number, const ibz_vec
         if (h < 4)
             ibz_vec_4_finalize(&(w[h]));
         ibz_vec_4_finalize(&(a[h]));
+    }
+}
+
+void
+ibz_mat_4xn_hnf_simple_mod_core(ibz_mat_4x4_t *hnf, int generator_number, const ibz_vec_4_t *generators, const ibz_t *mod)
+{
+    assert(generator_number > 3);
+    assert(!ibz_is_zero(mod));
+    ibz_t tmp, d, u, v, s, t;
+    ibz_vec_4_t a[generator_number + 4], tmp_vec;
+    ibz_init(&tmp); ibz_init(&d); ibz_init(&u); ibz_init(&v); ibz_init(&s); ibz_init(&t);
+    ibz_vec_4_init(&tmp_vec);
+    for (int i = 0; i < generator_number; i++) {
+        ibz_vec_4_init(&a[i]);
+        ibz_vec_4_copy_mod(&a[i], &generators[i], mod);
+    }
+    for (int i = generator_number; i < generator_number + 4; i++){
+        ibz_vec_4_init(&a[i]);
+        ibz_copy(&a[i][3 - (i - generator_number)], mod);
+    }
+
+    for (int i = 3; i >= 0; i--){
+        for (int j = 4-i; j < generator_number + 4 - i; j++) {
+            if (ibz_is_zero(&(a[j][i]))) continue;
+            
+            ibz_xgcd_with_u_not_0(&d, &u, &v, &a[3-i][i], &a[j][i]);
+            ibz_div(&s, &tmp, &(a[3-i][i]), &d);
+            assert(ibz_is_zero(&tmp));
+            ibz_div(&t, &tmp, &(a[j][i]), &d);
+            assert(ibz_is_zero(&tmp));
+            ibz_neg(&s, &s);
+            ibz_vec_4_linear_combination(&tmp_vec, &u, &a[3-i], &v, &a[j]);
+            ibz_vec_4_linear_combination_mod(&a[j], &t, &a[3-i], &s, &a[j], mod);
+            ibz_copy(&a[3-i][i], &tmp_vec[i]);
+            for (int k = 0; k < i; k++){
+                ibz_mod(&a[3-i][k], &tmp_vec[k], mod);
+            }
+        }
+        
+
+        for (int j = 0; j < 3-i; j++) {
+            ibz_div_floor(&d, &a[j][i], &a[j][i], &a[3-i][i]);
+            for (int k = 0; k < i; k++){
+                ibz_mul(&tmp, &d, &a[3-i][k]);
+                ibz_sub(&a[j][k], &a[j][k], &tmp);
+                ibz_mod(&a[j][k], &a[j][k], mod);
+            }
+        }
+    }
+
+    for (int i = 4; i < generator_number + 4; i++){
+        assert(ibz_vec_4_is_zero(&a[i]));
+    }
+
+    for (int i = 0; i < 4; i++){
+        for (int j = 0; j < 4; j++){
+            ibz_copy(&(*hnf)[j][3-i], &a[i][j]);
+        }
+    }
+
+    ibz_finalize(&tmp); ibz_finalize(&d); ibz_finalize(&u); ibz_finalize(&v); ibz_finalize(&s); ibz_finalize(&t);
+    ibz_vec_4_finalize(&tmp_vec);
+    for (int i = 0; i < generator_number + 4; i++){
+        ibz_vec_4_finalize(&a[i]);
     }
 }

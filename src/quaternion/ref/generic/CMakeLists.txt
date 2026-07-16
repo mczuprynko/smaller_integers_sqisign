@@ -4,6 +4,7 @@ set(SOURCE_FILES_QUATERNION_GENERIC_REF
     ideal.c
     dim4.c
     dim2.c
+    gauss_dim2.c
     integers.c
     lattice.c
     lat_ball.c

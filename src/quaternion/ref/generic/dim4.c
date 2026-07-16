@@ -406,6 +406,36 @@ ibz_mat_4x4_inv_with_det_as_denom(ibz_mat_4x4_t *inv, ibz_t *det, const ibz_mat_
     return (!ibz_is_zero(det));
 }
 
+void
+ibz_mat_4x4_inv_given_denom(ibz_mat_4x4_t *inv, const ibz_t *denom, const ibz_mat_4x4_t *mat) {
+    ibz_t d, r;
+    ibz_vec_4_t row, tmp;
+    ibz_mat_4x4_t work, t_mat;
+    ibz_init(&d); ibz_init(&r);
+    ibz_vec_4_init(&row); ibz_vec_4_init(&tmp);
+    ibz_mat_4x4_init(&work); ibz_mat_4x4_init(&t_mat);
+    ibz_mat_4x4_transpose(&t_mat, mat);
+
+    for (int i = 0; i < 4; i++){
+        ibz_div(&work[i][i], &r, denom, &t_mat[i][i]);
+        assert(ibz_is_zero(&r));
+        ibz_vec_4_scalar_mul(&row, &work[i][i], &t_mat[i]);
+        for (int j = i-1; j >= 0; j--) {
+            ibz_div(&work[i][j], &r, &row[j], &t_mat[j][j]);
+            ibz_neg(&work[i][j], &work[i][j]);
+            assert(ibz_is_zero(&r));
+            ibz_vec_4_scalar_mul(&tmp, &work[i][j], &t_mat[j]);
+            ibz_vec_4_add(&row, &tmp, &row);
+        }
+    }
+
+    ibz_mat_4x4_transpose(inv, &work);
+
+    ibz_finalize(&d); ibz_finalize(&r);
+    ibz_vec_4_finalize(&row); ibz_vec_4_finalize(&tmp);
+    ibz_mat_4x4_finalize(&work); ibz_mat_4x4_finalize(&t_mat);
+}
+
 // matrix evaluation
 
 void

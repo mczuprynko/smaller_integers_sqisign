@@ -617,6 +617,7 @@
 #undef quat_lideal_right_transporter
 #undef quat_order_discriminant
 #undef quat_order_is_maximal
+#undef quat_lideal_norm_verify
 
 #define quat_lideal_add                                 SQISIGN_NAMESPACE_GENERIC(quat_lideal_add)
 #define quat_lideal_class_gram                          SQISIGN_NAMESPACE_GENERIC(quat_lideal_class_gram)
@@ -630,6 +631,7 @@
 #define quat_lideal_inverse_lattice_without_hnf         SQISIGN_NAMESPACE_GENERIC(quat_lideal_inverse_lattice_without_hnf)
 #define quat_lideal_mul                                 SQISIGN_NAMESPACE_GENERIC(quat_lideal_mul)
 #define quat_lideal_norm                                SQISIGN_NAMESPACE_GENERIC(quat_lideal_norm)
+#define quat_lideal_norm_verify                         SQISIGN_NAMESPACE_GENERIC(quat_lideal_norm_verify)
 #define quat_lideal_right_order                         SQISIGN_NAMESPACE_GENERIC(quat_lideal_right_order)
 #define quat_lideal_right_transporter                   SQISIGN_NAMESPACE_GENERIC(quat_lideal_right_transporter)
 #define quat_order_discriminant                         SQISIGN_NAMESPACE_GENERIC(quat_order_discriminant)
@@ -781,6 +783,7 @@
 #undef quat_lattice_intersect
 #undef quat_lattice_mat_alg_coord_mul_without_hnf
 #undef quat_lattice_mul
+#undef quat_lattice_mul_given_mod
 #undef quat_lattice_reduce_denom
 
 #define quat_lattice_add                                SQISIGN_NAMESPACE_GENERIC(quat_lattice_add)
@@ -796,6 +799,7 @@
 #define quat_lattice_intersect                          SQISIGN_NAMESPACE_GENERIC(quat_lattice_intersect)
 #define quat_lattice_mat_alg_coord_mul_without_hnf      SQISIGN_NAMESPACE_GENERIC(quat_lattice_mat_alg_coord_mul_without_hnf)
 #define quat_lattice_mul                                SQISIGN_NAMESPACE_GENERIC(quat_lattice_mul)
+#define quat_lattice_mul_given_mod                      SQISIGN_NAMESPACE_GENERIC(quat_lattice_mul_given_mod)
 #define quat_lattice_reduce_denom                       SQISIGN_NAMESPACE_GENERIC(quat_lattice_reduce_denom)
 
 // Namespacing symbols exported from lll_applications.c:

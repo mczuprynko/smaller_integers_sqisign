@@ -254,7 +254,8 @@ id2iso_kernel_dlogs_to_ideal_even(quat_left_ideal_t *lideal, const ibz_vec_2_t *
     ibz_add(&gen.coord[0], &gen.coord[0], &vec[1]);
     ibz_vec_2_finalize(&vec);
 
-    quat_lideal_create(lideal, &gen, &two_pow, &MAXORD_O0, &QUATALG_PINFTY);
+    //quat_lideal_create(lideal, &gen, &two_pow, &MAXORD_O0, &QUATALG_PINFTY);
+    cbz_O0_lideal_create(lideal, &gen, &two_pow, &MAXORD_O0, &QUATALG_PINFTY);
 
     assert(0 == ibz_cmp(&lideal->norm, &two_pow));
 

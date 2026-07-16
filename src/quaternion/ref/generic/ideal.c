@@ -1,6 +1,7 @@
 #include <quaternion.h>
 #include <stdlib.h>
 #include "internal.h"
+#include <stdio.h>
 
 // assumes parent order and lattice correctly set, computes and sets the norm
 void
@@ -12,7 +13,7 @@ quat_lideal_norm(quat_left_ideal_t *lideal)
 }
 
 // assumes parent order and lattice correctly set, recomputes and verifies its norm
-static int
+int
 quat_lideal_norm_verify(const quat_left_ideal_t *lideal)
 {
     int res;
@@ -148,6 +149,27 @@ fin:;
 }
 
 void
+quat_O0_lideal_mul(quat_left_ideal_t *product,
+                const quat_left_ideal_t *lideal,
+                const quat_alg_elem_t *alpha,
+                const quat_alg_t *alg){
+
+    assert(quat_order_is_maximal((lideal->parent_order), alg));
+    ibz_t norm, norm_d;
+    ibz_init(&norm);
+    ibz_init(&norm_d);
+    product->parent_order = lideal->parent_order;
+    quat_alg_norm(&norm, &norm_d, alpha, alg);
+    ibz_mul(&(product->norm), &(lideal->norm), &norm);
+    assert(ibz_divides(&(product->norm), &norm_d));
+    ibz_div(&(product->norm), &norm, &(product->norm), &norm_d);
+    quat_O0_lattice_alg_elem_mul_given_norm(&(product->lattice), &(lideal->lattice), alpha, &(product->norm), alg); 
+    assert(quat_lideal_norm_verify(product));
+    ibz_finalize(&norm_d);
+    ibz_finalize(&norm);
+}
+
+void
 quat_lideal_mul(quat_left_ideal_t *product,
                 const quat_left_ideal_t *lideal,
                 const quat_alg_elem_t *alpha,
@@ -189,6 +211,130 @@ quat_lideal_inter(quat_left_ideal_t *inter,
     quat_lattice_intersect(&inter->lattice, &I1->lattice, &I2->lattice);
     inter->parent_order = I1->parent_order;
     quat_lideal_norm(inter);
+}
+
+void
+quat_O0_lideals_inter(quat_left_ideal_t *inter,
+                  const quat_left_ideal_t *I1,
+                  const quat_left_ideal_t *I2,
+                  const quat_alg_t *alg)
+{
+    assert(I1->parent_order == I2->parent_order);
+    assert(quat_order_is_maximal((I2->parent_order), alg));
+
+    ibz_t denom1, denom2, mod;
+    cbz_mat_2x2_t I1_dual, I1_c_mat, I2_dual, I2_c_mat, hnf, hnf_dual;
+    cbz_vec_2_t gens[4];
+    
+    ibz_init(&denom1); ibz_init(&denom2); ibz_init(&mod);
+    cbz_mat_2x2_init(&I1_dual); cbz_mat_2x2_init(&I1_c_mat); cbz_mat_2x2_init(&I2_dual); cbz_mat_2x2_init(&I2_c_mat); cbz_mat_2x2_init(&hnf); cbz_mat_2x2_init(&hnf_dual);
+    for (int i = 0; i < 4; i ++){
+        cbz_vec_2_init(&gens[i]);
+    }
+    cbz_mat_2x2_from_hnf_ibz_lat(&I1_c_mat, &I1->lattice.basis);
+    cbz_mat_2x2_from_hnf_ibz_lat(&I2_c_mat, &I2->lattice.basis);
+
+    ibz_mul(&denom1, &I1->norm, &I1->lattice.denom);
+    cbz_mat_2x2_inv_given_denom(&I1_c_mat, &denom1, &I1_c_mat);
+    cbz_mat_2x2_conj_transpose(&I1_dual, &I1_c_mat);
+    ibz_mul(&denom2, &I2->norm, &I2->lattice.denom);
+    cbz_mat_2x2_inv_given_denom(&I2_c_mat, &denom2, &I2_c_mat);
+    cbz_mat_2x2_conj_transpose(&I2_dual, &I2_c_mat);
+
+    cbz_mat_2x2_scalar_mul(&I1_dual, &I2->norm, &I1_dual);
+    cbz_mat_2x2_scalar_mul(&I2_dual, &I1->norm, &I2_dual);
+
+    cbz_vec_2_copy(&gens[0], &I1_dual[0]);
+    cbz_vec_2_copy(&gens[1], &I1_dual[1]);
+    cbz_vec_2_copy(&gens[2], &I2_dual[0]);
+    cbz_vec_2_copy(&gens[3], &I2_dual[1]);
+    
+    ibz_mul(&mod, &denom1, &denom2);
+    cbz_hnf_mod(&hnf, 4, gens, &mod, alg);
+    cbz_vec_2_swap(&hnf[0], &hnf[1]);
+    
+    cbz_mat_2x2_inv_given_denom(&hnf, &mod, &hnf);
+    cbz_mat_2x2_conj_transpose(&hnf_dual, &hnf);
+    ibz_lat_from_cbz_mat_2x2(&inter->lattice.basis, &hnf_dual);
+
+    ibz_mul(&inter->lattice.denom, &I1->lattice.denom, &I2->lattice.denom);
+    ibz_mul(&inter->norm, &I1->norm, &I2->norm);
+    inter->parent_order = I1->parent_order;
+    assert(quat_lideal_norm_verify(inter));
+
+    ibz_finalize(&denom1); ibz_finalize(&denom2); ibz_finalize(&mod);
+    cbz_mat_2x2_finalize(&I1_dual); cbz_mat_2x2_finalize(&I1_c_mat); cbz_mat_2x2_finalize(&I2_dual); cbz_mat_2x2_finalize(&I2_c_mat); cbz_mat_2x2_finalize(&hnf); cbz_mat_2x2_finalize(&hnf_dual);
+    for (int i = 0; i < 4; i ++){
+        cbz_vec_2_finalize(&gens[i]);
+    }
+}
+
+void
+quat_O0_lideal_conj_O0_lideal_inter(quat_lattice_t *inter,
+                  quat_lattice_t *dualG,
+                  const quat_left_ideal_t *I1,
+                  const quat_left_ideal_t *I2,
+                  const quat_alg_t *alg)
+{
+    assert(I1->parent_order == I2->parent_order);
+    assert(quat_order_is_maximal((I2->parent_order), alg));
+
+    ibz_t denom1, denom2, mod, tmp;
+    quat_lattice_t I1_lat_dual, I2_lat_dual, I1_I2_sum_dual, I1_I2_inter;
+    cbz_mat_2x2_t I1_dual, I1_c_mat, I2_dual, I2_c_mat;
+    
+    ibz_init(&denom1); ibz_init(&denom2); ibz_init(&mod); ibz_init(&tmp);
+    quat_lattice_init(&I1_lat_dual); quat_lattice_init(&I2_lat_dual); quat_lattice_init(&I1_I2_sum_dual); quat_lattice_init(&I1_I2_inter);
+    cbz_mat_2x2_init(&I1_dual); cbz_mat_2x2_init(&I1_c_mat); cbz_mat_2x2_init(&I2_dual); cbz_mat_2x2_init(&I2_c_mat);
+
+    cbz_mat_2x2_from_hnf_ibz_lat(&I1_c_mat, &I1->lattice.basis);
+    cbz_mat_2x2_from_hnf_ibz_lat(&I2_c_mat, &I2->lattice.basis);
+    
+    cbz_mat_2x2_swap_columns(&I1_c_mat, &I1_c_mat);
+    ibz_mul(&denom1, &I1->norm, &I1->lattice.denom);
+    cbz_mat_2x2_inv_given_denom(&I1_c_mat, &denom1, &I1_c_mat);
+    cbz_vec_2_swap(&I1_c_mat[0], &I1_c_mat[1]);
+    cbz_mat_2x2_conj_transpose(&I1_dual, &I1_c_mat);
+
+    ibz_mul(&denom2, &I2->norm, &I2->lattice.denom);
+    cbz_mat_2x2_inv_given_denom(&I2_c_mat, &denom2, &I2_c_mat);
+    cbz_mat_2x2_conj_transpose(&I2_dual, &I2_c_mat);
+
+    ibz_lat_from_cbz_mat_2x2(&I1_lat_dual.basis, &I1_dual);
+    ibz_copy(&I1_lat_dual.denom, &I1->norm);
+    ibz_lat_from_cbz_mat_2x2(&I2_lat_dual.basis, &I2_dual);
+    ibz_copy(&I2_lat_dual.denom, &I2->norm);
+
+    quat_lattice_conjugate_without_hnf(&I2_lat_dual, &I2_lat_dual);
+
+    ibz_mul(&mod, &I1->lattice.denom, &I2->lattice.denom);
+
+    quat_lattice_add_given_norm(&I1_I2_sum_dual, &I1_lat_dual, &I2_lat_dual, &mod);
+    quat_dual_lattice_gram(dualG, &I1_I2_sum_dual, alg);
+
+    // norm(I1)norm(I2) divides the denom and the dual gram matrix
+    ibz_mul(&mod, &I1->norm, &I2->norm);
+    int ok UNUSED = ibz_mat_4x4_scalar_div(&dualG->basis, &mod, &dualG->basis);
+    assert(ok);
+
+    ibz_div(&dualG->denom, &tmp, &dualG->denom, &mod);
+    assert(ibz_is_zero(&tmp));
+    
+    
+    //int ok UNUSED = ibz_mat_4x4_scalar_div(dualG, &mod, dualG);
+    //assert(ok);
+
+    //ibz_mul(&mod, &I1->norm, &I2->norm);
+
+    ibz_mul(&mod, &denom1, &denom2);
+    ibz_mat_4x4_inv_given_denom(&I1_I2_inter.basis, &mod, &I1_I2_sum_dual.basis);
+    ibz_mat_4x4_transpose(&inter->basis, &I1_I2_inter.basis);
+    ibz_mul(&inter->denom, &I1->lattice.denom, &I2->lattice.denom);
+    quat_lattice_reduce_denom(inter, inter);
+
+    ibz_finalize(&denom1); ibz_finalize(&denom2); ibz_finalize(&mod); ibz_finalize(&tmp);
+    quat_lattice_finalize(&I1_lat_dual); quat_lattice_finalize(&I2_lat_dual); quat_lattice_finalize(&I1_I2_sum_dual); quat_lattice_finalize(&I1_I2_inter);
+    cbz_mat_2x2_finalize(&I1_dual); cbz_mat_2x2_finalize(&I1_c_mat); cbz_mat_2x2_finalize(&I2_dual); cbz_mat_2x2_finalize(&I2_c_mat);
 }
 
 int

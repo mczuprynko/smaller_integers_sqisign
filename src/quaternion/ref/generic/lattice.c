@@ -1,6 +1,9 @@
 #include <quaternion.h>
 #include <rng.h>
 #include "internal.h"
+#include <stdio.h>
+
+extern const quat_alg_t QUATALG_PINFTY;
 
 // helper functions
 int
@@ -79,6 +82,42 @@ quat_lattice_dual_without_hnf(quat_lattice_t *dual, const quat_lattice_t *lat)
 
     ibz_finalize(&det);
     ibz_mat_4x4_finalize(&inv);
+}
+
+void
+quat_lattice_add_given_norm(quat_lattice_t *res, const quat_lattice_t *lat1, const quat_lattice_t *lat2, const ibz_t *norm)
+{
+    assert(!ibz_is_zero(norm));
+    ibz_vec_4_t generators[8];
+    ibz_mat_4x4_t tmp;
+    ibz_t mod, lcm, d1, d2, t;
+    ibz_init(&mod); ibz_init(&lcm); ibz_init(&d1); ibz_init(&d2); ibz_init(&t);
+    for (int i = 0; i < 8; i++)
+        ibz_vec_4_init(&(generators[i]));
+    ibz_mat_4x4_init(&tmp);
+    mpz_lcm(lcm, (lat1->denom), (lat2->denom));
+    ibz_copy(&res->denom, &lcm);
+    ibz_div(&d1, &t, &lcm, &(lat1->denom));
+    ibz_div(&d2, &t, &lcm, &(lat2->denom));
+    ibz_mat_4x4_scalar_mul(&tmp, &d2, &(lat2->basis));
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            ibz_copy(&(generators[j][i]), &(tmp[i][j]));
+        }
+    }
+    ibz_mat_4x4_scalar_mul(&tmp, &d1, &(lat1->basis));
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            ibz_copy(&(generators[4 + j][i]), &(tmp[i][j]));
+        }
+    }
+    ibz_mul(&mod, &lcm, norm);
+    ibz_mat_4xn_hnf_simple_mod_core(&(res->basis), 8, generators, &mod);
+
+    ibz_mat_4x4_finalize(&tmp);
+    ibz_finalize(&mod); ibz_finalize(&lcm); ibz_finalize(&d1); ibz_finalize(&d2); ibz_finalize(&t);
+    for (int i = 0; i < 8; i++)
+        ibz_vec_4_finalize(&(generators[i]));
 }
 
 void
@@ -163,6 +202,65 @@ quat_lattice_mat_alg_coord_mul_without_hnf(ibz_mat_4x4_t *prod,
 }
 
 void
+quat_O0_lattice_alg_elem_mul_given_norm(quat_lattice_t *prod,
+                          const quat_lattice_t *lat,
+                          const quat_alg_elem_t *elem,
+                          const ibz_t *norm,
+                          const quat_alg_t *alg) {
+    
+    ibz_t mod;
+    cbz_mat_2x2_t mat;
+    cbz_vec_2_t gen[2];
+    ibz_init(&mod);
+    cbz_mat_2x2_init(&mat);
+    cbz_vec_2_init(&gen[0]); cbz_vec_2_init(&gen[1]);
+
+    quat_lattice_mat_alg_coord_mul_without_hnf(&(prod->basis), &(lat->basis), &(elem->coord), alg);
+    ibz_mul(&(prod->denom), &(lat->denom), &(elem->denom));
+    ibz_mul(&mod, norm, &(prod->denom));
+    cbz_mat_2x2_from_hnf_ibz_lat(&mat, &(prod->basis));
+    cbz_vec_2_copy(&gen[0], &mat[0]);
+    cbz_vec_2_copy(&gen[1], &mat[1]);
+    cbz_hnf_mod(&mat, 2, gen, &mod, alg);
+    ibz_lat_from_cbz_mat_2x2(&(prod->basis), &mat);      
+    quat_lattice_reduce_denom(prod, prod);
+    
+    ibz_finalize(&mod);
+    cbz_mat_2x2_finalize(&mat);
+    cbz_vec_2_finalize(&gen[0]); cbz_vec_2_finalize(&gen[1]);
+}
+
+void
+quat_lattice_alg_elem_mul_given_mod(quat_lattice_t *prod,
+                          const quat_lattice_t *lat,
+                          const quat_alg_elem_t *elem,
+                          const ibz_t *mod,
+                          const quat_alg_t *alg)
+{
+    ibz_t d_mod;
+    ibz_vec_4_t gens[4];
+    ibz_mat_4x4_t work;
+    ibz_init(&d_mod);
+    ibz_mat_4x4_init(&work);
+    for (int i = 0; i < 4; i++) ibz_vec_4_init(&gens[i]);
+
+    quat_lattice_mat_alg_coord_mul_without_hnf(&(prod->basis), &(lat->basis), &(elem->coord), alg);
+    ibz_mat_4x4_transpose(&work, &(prod->basis));
+    ibz_mul(&(prod->denom), &(lat->denom), &(elem->denom));
+    ibz_mul(&d_mod, mod, &prod->denom);
+    
+    for (int i = 0; i < 4; i++) {
+        ibz_vec_4_copy(&gens[i], &(work[i]));
+    }
+    ibz_mat_4xn_hnf_simple_mod_core(&prod->basis, 4, gens, &d_mod);
+    quat_lattice_reduce_denom(prod, prod);
+
+    ibz_finalize(&d_mod);
+    ibz_mat_4x4_finalize(&work);
+    for (int i = 0; i < 4; i++) ibz_vec_4_finalize(&gens[i]);
+}
+
+void
 quat_lattice_alg_elem_mul(quat_lattice_t *prod,
                           const quat_lattice_t *lat,
                           const quat_alg_elem_t *elem,
@@ -214,6 +312,46 @@ quat_lattice_mul(quat_lattice_t *res, const quat_lattice_t *lat1, const quat_lat
     quat_lattice_finalize(&lat_res);
     ibz_finalize(&det);
     ibz_mat_4x4_finalize(&(detmat));
+    for (int i = 0; i < 16; i++)
+        ibz_vec_4_finalize(&(generators[i]));
+}
+
+void
+quat_lattice_mul_given_mod(quat_lattice_t *res, const quat_lattice_t *lat1, const quat_lattice_t *lat2, const ibz_t *mod, const quat_alg_t *alg)
+{
+    ibz_vec_4_t elem1, elem2, elem_res;
+    ibz_vec_4_t generators[16];
+    ibz_t dem_mod;
+    quat_lattice_t lat_res;
+    quat_lattice_init(&lat_res);
+    ibz_vec_4_init(&elem1);
+    ibz_vec_4_init(&elem2);
+    ibz_vec_4_init(&elem_res);
+    ibz_init(&dem_mod);
+    for (int i = 0; i < 16; i++)
+        ibz_vec_4_init(&(generators[i]));
+    for (int k = 0; k < 4; k++) {
+        ibz_vec_4_copy_ibz(
+            &elem1, &(lat1->basis[0][k]), &(lat1->basis[1][k]), &(lat1->basis[2][k]), &(lat1->basis[3][k]));
+        for (int i = 0; i < 4; i++) {
+            ibz_vec_4_copy_ibz(
+                &elem2, &(lat2->basis[0][i]), &(lat2->basis[1][i]), &(lat2->basis[2][i]), &(lat2->basis[3][i]));
+            quat_alg_coord_mul(&elem_res, &elem1, &elem2, alg);
+            for (int j = 0; j < 4; j++) {
+                ibz_copy(&(generators[4 * k + i][j]), &(elem_res[j]));
+            }
+        }
+    }
+    ibz_mul(&(res->denom), &(lat1->denom), &(lat2->denom));
+    ibz_mul(&dem_mod, &(res->denom), mod);
+    ibz_mat_4xn_hnf_simple_mod_core(&(res->basis), 16, generators, &dem_mod);
+    
+    quat_lattice_reduce_denom(res, res);
+    ibz_vec_4_finalize(&elem1);
+    ibz_vec_4_finalize(&elem2);
+    ibz_vec_4_finalize(&elem_res);
+    quat_lattice_finalize(&lat_res);
+    ibz_finalize(&dem_mod);
     for (int i = 0; i < 16; i++)
         ibz_vec_4_finalize(&(generators[i]));
 }
@@ -280,14 +418,55 @@ quat_lattice_index(ibz_t *index, const quat_lattice_t *sublat, const quat_lattic
     ibz_finalize(&det);
 }
 
+static void 
+quat_lattice_norm(quat_lattice_t *lat, ibz_t *norm) {
+    ibz_t tnorm1, tnorm2, dummy;
+    quat_alg_elem_t a, b, c, d;
+    quat_alg_elem_init(&a);
+    quat_alg_elem_init(&b);
+    quat_alg_elem_init(&c);
+    quat_alg_elem_init(&d);
+    ibz_init(&tnorm1);
+    ibz_init(&tnorm2);
+    ibz_init(&dummy);
+
+    ibz_vec_4_copy_ibz(&(a.coord), &(lat->basis[0][0]), &(lat->basis[1][0]), &(lat->basis[2][0]), &(lat->basis[3][0]));
+    ibz_vec_4_copy_ibz(&(b.coord), &(lat->basis[0][1]), &(lat->basis[1][1]), &(lat->basis[2][1]), &(lat->basis[3][1]));
+    ibz_vec_4_copy_ibz(&(c.coord), &(lat->basis[0][2]), &(lat->basis[1][2]), &(lat->basis[2][2]), &(lat->basis[3][2]));
+    ibz_vec_4_copy_ibz(&(d.coord), &(lat->basis[0][3]), &(lat->basis[1][3]), &(lat->basis[2][3]), &(lat->basis[3][3]));
+
+    quat_alg_norm(&tnorm1, &dummy, &a, &QUATALG_PINFTY);
+    quat_alg_norm(&tnorm2, &dummy, &b, &QUATALG_PINFTY);
+    ibz_gcd(norm, &tnorm1, &tnorm2);
+
+    quat_alg_norm(&tnorm2, &dummy, &c, &QUATALG_PINFTY);
+    ibz_gcd(&tnorm1, norm, &tnorm2);
+    
+    quat_alg_norm(&tnorm2, &dummy, &d, &QUATALG_PINFTY);
+    ibz_gcd(norm, &tnorm1, &tnorm2);
+
+    quat_alg_elem_finalize(&a);
+    quat_alg_elem_finalize(&b);
+    quat_alg_elem_finalize(&c);
+    quat_alg_elem_finalize(&d);
+    ibz_finalize(&tnorm1);
+    ibz_finalize(&tnorm2);
+    ibz_finalize(&dummy);
+}
+
+
 void
 quat_lattice_hnf(quat_lattice_t *lat)
 {
-    ibz_t mod;
+    ibz_t mod, norm;
     ibz_vec_4_t generators[4];
     ibz_init(&mod);
+    ibz_init(&norm);
     ibz_mat_4x4_inv_with_det_as_denom(NULL, &mod, &(lat->basis));
     ibz_abs(&mod, &mod);
+
+    quat_lattice_norm(lat, &norm);
+
     for (int i = 0; i < 4; i++)
         ibz_vec_4_init(&(generators[i]));
     for (int i = 0; i < 4; i++) {
@@ -297,6 +476,7 @@ quat_lattice_hnf(quat_lattice_t *lat)
     }
     ibz_mat_4xn_hnf_mod_core(&(lat->basis), 4, generators, &mod);
     quat_lattice_reduce_denom(lat, lat);
+    ibz_finalize(&norm);
     ibz_finalize(&mod);
     for (int i = 0; i < 4; i++)
         ibz_vec_4_finalize(&(generators[i]));
@@ -322,6 +502,33 @@ quat_lattice_gram(ibz_mat_4x4_t *G, const quat_lattice_t *lattice, const quat_al
     for (int i = 0; i < 4; i++) {
         for (int j = i + 1; j < 4; j++) {
             ibz_copy(&(*G)[i][j], &(*G)[j][i]);
+        }
+    }
+    ibz_finalize(&tmp);
+}
+
+void
+quat_dual_lattice_gram(quat_lattice_t *dual_G, const quat_lattice_t *dual_lattice, const quat_alg_t *alg)
+{
+    ibz_t tmp;
+    ibz_init(&tmp);
+    ibz_mul(&dual_G->denom, &dual_lattice->denom, &alg->p);
+    ibz_mul(&dual_G->denom, &dual_G->denom, &dual_lattice->denom);
+    ibz_mul(&dual_G->denom, &dual_G->denom, &ibz_const_two);
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j <= i; j++) {
+            ibz_set(&(dual_G->basis)[i][j], 0);
+            for (int k = 0; k < 4; k++) {
+                ibz_mul(&tmp, &(dual_lattice->basis)[k][i], &(dual_lattice->basis)[k][j]);
+                if (k < 2)
+                    ibz_mul(&tmp, &tmp, &alg->p);
+                ibz_add(&(dual_G->basis)[i][j], &(dual_G->basis)[i][j], &tmp);
+            }
+        }
+    }
+    for (int i = 0; i < 4; i++) {
+        for (int j = i + 1; j < 4; j++) {
+            ibz_copy(&(dual_G->basis)[i][j], &(dual_G->basis)[j][i]);
         }
     }
     ibz_finalize(&tmp);

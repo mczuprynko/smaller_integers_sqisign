@@ -3,6 +3,7 @@
 #include <quaternion_data.h>
 #include <id2iso.h>
 #include <torsion_constants.h>
+#include <stdio.h>
 
 void
 secret_key_init(secret_key_t *sk)
@@ -17,6 +18,20 @@ secret_key_finalize(secret_key_t *sk)
 {
     quat_left_ideal_finalize(&(sk->secret_ideal));
     ibz_mat_2x2_finalize(&(sk->mat_BAcan_to_BA0_two));
+}
+
+static void print_fp2_t(fp2_t *P) {
+    printf("[[");
+    for (int i = 0; i < 4; ++i) {
+        printf("0x%016lX, ", P->re[i]);
+    }
+    printf("0x%016lX],\n", P->re[4]);
+    printf("[");
+    for (int i = 0; i < 4; ++i) {
+        printf("0x%016lX, ", P->im[i]);
+    }
+    printf("0x%016lX]]\n", P->im[4]);
+    printf("\n");
 }
 
 int
@@ -36,7 +51,6 @@ protocols_keygen(public_key_t *pk, secret_key_t *sk)
                              &sk->secret_ideal, &QUATALG_PINFTY, QUAT_primality_num_iter, QUAT_equiv_bound_coeff);
 
         // ideal to isogeny clapotis
-
         found = found && dim2id2iso_arbitrary_isogeny_evaluation(&B_0_two, &sk->curve, &sk->secret_ideal);
     }
 

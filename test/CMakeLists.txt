@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
+#[===[
 FOREACH(SVARIANT ${SVARIANT_S})
 
     string(TOLOWER ${SVARIANT} SVARIANT_LOWER)
@@ -20,3 +21,4 @@ FOREACH(SVARIANT ${SVARIANT_S})
     endif()
 
 ENDFOREACH()
+]===]

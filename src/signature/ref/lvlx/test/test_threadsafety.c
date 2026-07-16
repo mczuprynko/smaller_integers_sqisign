@@ -12,6 +12,8 @@
 int threads = 4;
 int iterations = SQISIGN_TEST_REPS;
 
+uint64_t commit_cyc, end_cyc, even_part_cyc, odd_part_cyc, rand_aux_ideal_cyc, chall_to_quat_cyc, hash_chall_cyc, com_rign_cyc, com_repi_cyc, com_iti_cyc, rsp_rign_cyc, rsp_ideal_int_cyc, rsp_sai_cyc, rsp_dim2_iso_cyc;
+
 char dummy = 0;
 
 void *
