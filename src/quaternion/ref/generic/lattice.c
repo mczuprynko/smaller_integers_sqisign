@@ -1,7 +1,6 @@
 #include <quaternion.h>
 #include <rng.h>
 #include "internal.h"
-#include <stdio.h>
 
 extern const quat_alg_t QUATALG_PINFTY;
 

@@ -1,3 +1,35 @@
+# Tighter Integer Bounds for SQIsign
+
+This repository is the implementation of the changes described in the paper: "_Tighter and Friendlier Integer Bounds for Quaternion Algorithms_."
+
+This repository is built on top of the reference implementation of SQIsign. Besides the smaller integer sizes encountered during the quaternion part of key and signature generation, the makefiles have been modified to only compile the benchmarking code, since the modifications change the KAT results. Instead, validation is done by confirming that the verification step succeeds. The benchmark returns the highest recorded bit size in the quaternion domain during the performed signature generations.
+
+The README from the reference implementation can be found in the _SQIsign_ section.
+
+## Running 
+
+If the GMP library is available on the system, the following commands produce the benchmarking executable in `build/apps`:
+
+```
+$ mkdir -p build
+$ cd build
+$ cmake -DSQISIGN_BUILD_TYPE=ref -DCMAKE_BUILD_TYPE=Release ..
+$ cd apps
+$ make
+$ ./bemchamrk_lvl{1,3,5}
+```
+
+Otherwise, if the GMP library is not available, it can be built with:
+
+```
+$ mkdir -p build
+$ cd build
+$ cmake -DSQISIGN_BUILD_TYPE=ref -DCMAKE_BUILD_TYPE=Release -DGMP_LIBRARY=BUILD ..
+$ cd apps
+$ make
+$ ./bemchamrk_lvl{1,3,5}
+```
+
 # SQIsign
 
 This library is a C implementation of SQIsign.

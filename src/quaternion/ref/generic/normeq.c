@@ -333,7 +333,6 @@ quat_sampling_random_ideal_O0_given_norm(quat_left_ideal_t *lideal,
     // gen is not divisible by any integer factor of the target norm
     // therefore the call below will yield an ideal of the correct norm
     //quat_lideal_create(lideal, &gen, norm, &((params->order)->order), (params->algebra));
-    //ibz_mat_4x4_print(&lideal->lattice.basis);
     
     cbz_O0_lideal_create(lideal, &gen, norm, &((params->order)->order), (params->algebra));
 

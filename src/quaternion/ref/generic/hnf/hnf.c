@@ -1,7 +1,5 @@
 #include "hnf_internal.h"
 #include "internal.h"
-#include <stdio.h>
-#include "bench.h"
 
 // HNF test function
 int
@@ -136,7 +134,6 @@ ibz_mat_4xn_hnf_mod_core(ibz_mat_4x4_t *hnf, int generator_number, const ibz_vec
     ibz_init(&coeff_1);
     ibz_init(&coeff_2);
     ibz_vec_4_init(&c);
-    PRINT_BACKTRACE_SYMBOLS(0LU);
     for (int h = 0; h < n; h++) {
         if (h < 4)
             ibz_vec_4_init(&(w[h]));

@@ -29,30 +29,15 @@ commit(ec_curve_t *E_com, ec_basis_t *basis_even_com, quat_left_ideal_t *lideal_
 {
 
     bool found = false;
-#if 1
-        BEG_MES()
-#endif
     found = quat_sampling_random_ideal_O0_given_norm(lideal_com, &COM_DEGREE, 1, &QUAT_represent_integer_params, NULL);
     // replacing it with a shorter prime norm equivalent ideal
-#if 1
-        END_MES(COMMIT_RndIdealGivNorm)
-#endif
-#if 1
-        BEG_MES()
-#endif
+
     found = found && quat_lideal_prime_norm_reduced_equivalent(
                          lideal_com, &QUATALG_PINFTY, QUAT_primality_num_iter, QUAT_equiv_bound_coeff);
-#if 1
-        END_MES(COMMIT_RndEquivPrimeIdeal)
-#endif
-#if 1
-        BEG_MES()
-#endif
+
     // ideal to isogeny clapotis
     found = found && dim2id2iso_arbitrary_isogeny_evaluation(basis_even_com, E_com, lideal_com);
-#if 1
-        END_MES(COMMIT_IdealToIso)
-#endif
+
     return found;
 }
 
@@ -246,35 +231,18 @@ evaluate_random_aux_isogeny_signature(ec_curve_t *E_aux,
     quat_left_ideal_init(&lideal_aux);
     quat_left_ideal_init(&lideal_aux_resp_com);
     int found = 0;
-#if 1
-        BEG_MES()
-#endif
+
     // sampling the ideal at random
     found = quat_sampling_random_ideal_O0_given_norm(
         &lideal_aux, norm, 0, &QUAT_represent_integer_params, &QUAT_prime_cofactor);
-#if 1
-        END_MES(ODD_RndIdealGivNorm)
-#endif
 
     if (found) {
         // pushing forward
-#if 1
-        BEG_MES()
-#endif
         //quat_lideal_inter(&lideal_aux_resp_com, lideal_com_resp, &lideal_aux, &QUATALG_PINFTY);
         quat_O0_lideals_inter(&lideal_aux_resp_com, lideal_com_resp, &lideal_aux, &QUATALG_PINFTY);
-#if 1
-        END_MES(ODD_IdealIntersection)
-#endif
 
-#if 1
-        BEG_MES()
-#endif
         // now we evaluate this isogeny on the basis of E0
         found = dim2id2iso_arbitrary_isogeny_evaluation(B_aux, E_aux, &lideal_aux_resp_com);
-#if 1
-        END_MES(ODD_IdealToIso)
-#endif
         // Clean up
         quat_left_ideal_finalize(&lideal_aux_resp_com);
         quat_left_ideal_finalize(&lideal_aux);
@@ -576,33 +544,17 @@ protocols_sign(signature_t *sig, const public_key_t *pk, secret_key_t *sk, const
     while (!ret) {
 
         // computing the commitment
-#if 1
-        BEG_MES()
-        choice = 0;
-#endif
+
         ret = commit(&Ecom_Eaux.E1, &Ecom_Eaux.B1, &lideal_commit);
-#if 1
-        choice = 1;
-        END_MES(COMMIT)
-#endif
         // start again if the commitment generation has failed
         if (!ret) {
             continue;
         }
 
-#if 1
-        BEG_MES()
-#endif
         // Hash the message to a kernel generator
         // i.e. a scalar such that ker = P + [s]Q
         hash_to_challenge(&sig->chall_coeff, pk, &Ecom_Eaux.E1, m, l);
-#if 1
-        END_MES(HASH_CHALL)
-#endif
 
-#if 1
-        BEG_MES()
-#endif
         // Compute the challenge ideal and response quaternion element
         {
             quat_left_ideal_t lideal_chall_two;
@@ -615,13 +567,7 @@ protocols_sign(signature_t *sig, const public_key_t *pk, secret_key_t *sk, const
             // Clean up
             quat_left_ideal_finalize(&lideal_chall_two);
         }
-#if 1
-        END_MES(CHALL_TO_QUAT)
-#endif
 
-#if 1
-        BEG_MES()
-#endif
         // computing the amount of backtracking we're making
         // and removing it
         compute_backtracking_signature(sig, &resp_quat, &lattice_content, &remain);
@@ -642,13 +588,6 @@ protocols_sign(signature_t *sig, const public_key_t *pk, secret_key_t *sk, const
         // B0 = canonical basis of E0
         // B_com = image through commitment isogeny (odd degree) of canonical basis of E0
         // B_aux = image through aux_resp_com isogeny (odd degree) of canonical basis of E0
-#if 1
-        END_MES(RAND_AUX_IDEAL)
-#endif
-
-#if 1
-        BEG_MES()
-#endif
         if (pow_dim2_deg_resp > 0) {
             // Evaluate the random aux ideal on the curve E0 and its basis to find E_aux and B_aux
             ret =
@@ -678,14 +617,8 @@ protocols_sign(signature_t *sig, const public_key_t *pk, secret_key_t *sk, const
             // and evaluated points stored as bases in
             // B_aux_2 on E_aux_2
             // B_chall_2 on E_chall_2
-#if 1
-        BEG_MES()
-#endif
             ret = compute_dim2_isogeny_challenge(
                 &Eaux2_Echall2, &Ecom_Eaux, &degree_resp_inv, pow_dim2_deg_resp, sig->two_resp_length, reduced_order);
-#if 1
-        END_MES(ODD_SplitAuxIso)
-#endif
             if (!ret) {
                 continue;
             }
@@ -699,13 +632,6 @@ protocols_sign(signature_t *sig, const public_key_t *pk, secret_key_t *sk, const
             ec_dbl_iter_basis(&Eaux2_Echall2.B1, TORSION_EVEN_POWER - reduced_order, &Ecom_Eaux.B1, &Ecom_Eaux.E1);
             copy_basis(&Eaux2_Echall2.B2, &Eaux2_Echall2.B1);
         }
-#if 1
-        END_MES(ODD_ISO)
-#endif
-
-#if 1
-        BEG_MES()
-#endif
         // computation of the remaining small chain of two isogenies when needed
         if (sig->two_resp_length > 0) {
             if (!compute_small_chain_isogeny_signature(
@@ -717,24 +643,14 @@ protocols_sign(signature_t *sig, const public_key_t *pk, secret_key_t *sk, const
         // computation of the challenge codomain
         if (!compute_challenge_codomain_signature(sig, sk, &E_chall, &Eaux2_Echall2.E2, &Eaux2_Echall2.B2))
             assert(0); // this shouldn't fail
-#if 1
-        END_MES(EVEN_ISO)
-#endif
     }
 
-#if 1
-        BEG_MES()
-#endif
     // Set to the signature the Montgomery A-coefficient of E_aux_2
     set_aux_curve_signature(sig, &Eaux2_Echall2.E1);
 
     // Set the basis change matrix from canonical bases to the supplied bases
     compute_and_set_basis_change_matrix(
         sig, &Eaux2_Echall2.B1, &Eaux2_Echall2.B2, &Eaux2_Echall2.E1, &E_chall, reduced_order);
-
-#if 1
-        END_MES(END_SIG)
-#endif
 
     quat_alg_elem_finalize(&resp_quat);
     quat_left_ideal_finalize(&lideal_commit);

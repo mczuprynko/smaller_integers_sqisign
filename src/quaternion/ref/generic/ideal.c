@@ -1,7 +1,6 @@
 #include <quaternion.h>
 #include <stdlib.h>
 #include "internal.h"
-#include <stdio.h>
 
 // assumes parent order and lattice correctly set, computes and sets the norm
 void

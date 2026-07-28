@@ -1,8 +1,6 @@
 #include <quaternion.h>
 #include <internal.h>
 #include "lll_internals.h"
-#include "bench.h"
-uint64_t lll_count;
 
 void
 quat_lideal_reduce_basis(ibz_mat_4x4_t *reduced,
@@ -10,7 +8,6 @@ quat_lideal_reduce_basis(ibz_mat_4x4_t *reduced,
                          const quat_left_ideal_t *lideal,
                          const quat_alg_t *alg)
 {
-    lll_count += 1;
     assert(quat_order_is_maximal((lideal->parent_order), alg));
     ibz_t gram_corrector;
     ibz_init(&gram_corrector);

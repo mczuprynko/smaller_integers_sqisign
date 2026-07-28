@@ -805,8 +805,6 @@ dim2id2iso_ideal_to_isogeny_clapotis(quat_alg_elem_t *beta1,
     unsigned int Fu_length, Fv_length;
 #endif
 
-    BEG_MES()
-
     ret = find_uv(u,
                   v,
                   beta1,
@@ -819,10 +817,7 @@ dim2id2iso_ideal_to_isogeny_clapotis(quat_alg_elem_t *beta1,
                   lideal,
                   Bpoo,
                   NUM_ALTERNATE_EXTREMAL_ORDERS);
-    
-    END_MES_CHOICE(COMMIT_ITI_SuitableIdeals, ODD_ITI_SuitableIdeals);
 
-    //printf("%i, %i\n", index_order1, index_order2);
 
     if (!ret) {
         goto cleanup;
@@ -906,10 +901,8 @@ dim2id2iso_ideal_to_isogeny_clapotis(quat_alg_elem_t *beta1,
     pushed_points[1] = Q;
     pushed_points[2] = PmQ;
     // we perform the computation of phiu with a fixed degree isogeny
-    BEG_MES()
     ret = fixed_degree_isogeny_and_eval(
         &idealu, u, true, &Fu_codomain, pushed_points, sizeof(pushed_points) / sizeof(*pushed_points), index_order1);
-    END_MES_CHOICE(COMMIT_ITI_FixedDegIso, ODD_ITI_FixedDegIso)
     if (!ret) {
         goto cleanup;
     }
@@ -961,10 +954,8 @@ dim2id2iso_ideal_to_isogeny_clapotis(quat_alg_elem_t *beta1,
     pushed_points[2] = PmQ;
 
     // computation of phiv
-    BEG_MES()
     ret = fixed_degree_isogeny_and_eval(
         &idealv, v, true, &Fv_codomain, pushed_points, sizeof(pushed_points) / sizeof(*pushed_points), index_order2);
-    END_MES_CHOICE(COMMIT_ITI_FixedDegIso, ODD_ITI_FixedDegIso)
     if (!ret) {
         goto cleanup;
     }
@@ -1055,10 +1046,8 @@ dim2id2iso_ideal_to_isogeny_clapotis(quat_alg_elem_t *beta1,
 
     theta_couple_curve_t theta_codomain;
 
-    BEG_MES()
     ret = theta_chain_compute_and_eval_randomized(
         exp, &E01, &ker, false, &theta_codomain, pushed_points, sizeof(pushed_points) / sizeof(*pushed_points));
-    END_MES_CHOICE(COMMIT_ITI_Iso22Chain, ODD_ITI_Iso22Chain)
     if (!ret) {
         goto cleanup;
     }
@@ -1184,11 +1173,6 @@ dim2id2iso_arbitrary_isogeny_evaluation(ec_basis_t *basis, ec_curve_t *codomain,
 
     ret = dim2id2iso_ideal_to_isogeny_clapotis(
         &beta1, &beta2, &u, &v, &d1, &d2, codomain, basis, lideal, &QUATALG_PINFTY);
-
-    //gmp_printf("u = %Zd \n", &u);
-    //gmp_printf("v = %Zd \n", &v);
-    //gmp_printf("d1 = %Zd \n", &d1);
-    //gmp_printf("d2 = %Zd \n", &d2);
 
     quat_alg_elem_finalize(&beta1);
     quat_alg_elem_finalize(&beta2);
